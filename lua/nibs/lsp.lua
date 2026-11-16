@@ -1,17 +1,35 @@
-    -- lsp
---------------------------------------------------------------------------------
+-- lsp.lua
+vim.lsp.config('ts_ls', {
+  filetypes = {
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact",
+    "html"
+  }
+})
+vim.lsp.config('pyright',{
+    autoImportCompletions = true,
+    indexing = true,
+    autoSearchPaths = true,
+    useLibraryCodeForTypes = true
+})
 -- See https://gpanders.com/blog/whats-new-in-neovim-0-11/ for a nice overview
 -- of how the lsp setup works in neovim 0.11+.
-
--- This actually just enables the lsp servers.
--- The configuration is found in the lsp folder inside the nvim config folder,
--- so in ~.config/lsp/lua_ls.lua for lua_ls, for example.
 vim.lsp.enable({
     'lua_ls',
-    'jedi_language_server',
-    'ts_ls'
-}
-)
+    -- 'jedi_language_server',
+    'pyright',
+    'ts_ls',
+    'clangd',
+    'jdtls',
+    'html',
+    'cssls',
+    'harper_ls',
+    'intelephense'
+})
+
+-- It correctly attaches all your keymaps once a server starts.
 vim.api.nvim_create_autocmd('LspAttach', {
       group = vim.api.nvim_create_augroup('lsp-attach', { clear = true }),
       -- Create a function that lets us more easily define mappings specific LSP related items.
@@ -21,100 +39,20 @@ vim.api.nvim_create_autocmd('LspAttach', {
           vim.keymap.set('n', keys, func, { buffer = event.buf, desc = 'LSP: ' .. desc })
         end
 
-        local client = vim.lsp.get_client_by_id(event.data.client_id)
-
-        if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_completion) then
-            vim.opt.completeopt = { 'menu', 'menuone', 'noinsert', 'fuzzy', 'popup' }
-            require('lsp_signature').on_attach({
-                bind = true,
-                floating_window = true,
-                hint_enable = true,
-            }, event.buf)
-
-            --local chars = {}; for i = 32, 126 do table.insert(chars, string.char(i)) end
-            --client.server_capabilities.completionProvider.triggerCharacters = chars
-            vim.lsp.completion.enable(true, client.id, event.buf, { autotrigger = true , convert = function(item)
-               return { abbr = item.label:gsub('%b()', '') }
-            end})
-            vim.keymap.set('i', '<C-k>', function()
-                vim.lsp.completion.get()
-            end)
-        end
-        -- Jump to the definition of the word under your cursor.
-        --  This is where a variable was first declared, or where a function is defined, etc.
-        --  To jump back, press <C-T>.
         map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
-
-        -- Find references for the word under your cursor.
         map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
-
-        -- Jump to the implementation of the word under your cursor.
-        --  Useful when your language has ways of declaring types without an actual implementation.
         map('gI', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
-
-        -- Jump to the type of the word under your cursor.
-        --  Useful when you're not sure what type a variable is and you want to see
-        --  the definition of its *type*, not where it was *defined*.
         map('<leader>D', require('telescope.builtin').lsp_type_definitions, 'Type [D]efinition')
-
-        -- Fuzzy find all the symbols in your current document.
-        --  Symbols are things like variables, functions, types, etc.
         map('<leader>ds', require('telescope.builtin').lsp_document_symbols, '[D]ocument [S]ymbols')
-
-        -- Fuzzy find all the symbols in your current workspace
-        --  Similar to document symbols, except searches over your whole project.
         map('<leader>ws', require('telescope.builtin').lsp_dynamic_workspace_symbols, '[W]orkspace [S]ymbols')
-
-        -- Rename the variable under your cursor
-        --  Most Language Servers support renaming across files, etc.
         map('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
-
-        -- Execute a code action, usually your cursor needs to be on top of an error
-        -- or a suggestion from your LSP for this to activate.
         map('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
-
-        -- Opens a popup that displays documentation about the word under your cursor
-        --  See `:help K` for why this keymap
+        map('<leader>e', vim.diagnostic.open_float,'Hover Error')
         map('K', vim.lsp.buf.hover, 'Hover Documentation')
-
-        -- WARN: This is not Goto Definition, this is Goto Declaration.
-        --  For example, in C this would take you to the header
         map('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
-
-        map('<leader>wa', vim.lsp.buf.add_workspace_folder, '[W]orkspace [A]dd Folder')
-        map('<leader>wr', vim.lsp.buf.remove_workspace_folder, '[W]orkspace [R]emove Folder')
-        map('<leader>wl', function()
-          print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
-        end, '[W]orkspace [L]ist Folders')
-
-        -- The following code creates a keymap to toggle inlay hints in your
-        -- code, if the language server you are using supports them
-        if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_inlayHint) then
-            map('<leader>th', function()
-                vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf })
-            end, '[T]oggle Inlay [H]ints')
-        end
-    end,
-
+        -- etc.
+      end,
 })
-vim.cmd [[set completeopt+=menuone,noselect,popup]]
-
--- Diagnostics
-vim.diagnostic.config({
-  -- Use the default configuration
-  -- virtual_lines = true
-  underline = true,
-  severity_sort = true,
-  update_in_insert = false,
-  virtual_text = true,
-  float = {
-    border = "rounded",
-    source = true
-  },
-
-  -- Alternatively, customize specific options
-  virtual_lines = {
-    -- Only show virtual line diagnostics for the current cursor line
-    current_line = true,
-  },
-})
+vim.keymap.set("i", "<C-k>", function()
+  vim.lsp.buf.signature_help()
+end, { desc = "Signature help" })

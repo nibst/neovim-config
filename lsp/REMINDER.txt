@@ -1,0 +1,2 @@
+use Mason to install lsps;
+lsps configs are on some .local/share path, idk
